@@ -28,10 +28,14 @@ func beNetcat(con io.ReadWriteCloser) {
 func main() {
 	list := flag.Bool("l", false, "listen on the given address")
 
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [-l] <host> <port>\n", os.Args[0])
+	}
+
 	flag.Parse()
 
 	if len(flag.Args()) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s [-l] <host> <port>\n", os.Args[0])
+		flag.Usage()
 		os.Exit(1)
 	}
 
