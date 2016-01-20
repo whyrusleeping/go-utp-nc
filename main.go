@@ -11,8 +11,18 @@ import (
 func beNetcat(con io.ReadWriteCloser) {
 	defer con.Close()
 
-	go io.Copy(os.Stdout, con)
-	io.Copy(con, os.Stdin)
+	go func() {
+		_, err := io.Copy(os.Stdout, con)
+		if err != io.EOF {
+			fmt.Fprintf(os.Stderr, "Read error: %s\n", err)
+			os.Exit(1)
+		}
+	}()
+	_, err := io.Copy(con, os.Stdin)
+	if err != io.EOF {
+		fmt.Fprintf(os.Stderr, "Write error: %s\n", err)
+		os.Exit(1)
+	}
 }
 
 func main() {
@@ -34,6 +44,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "create socket failed: %s\n", err)
 			os.Exit(1)
 		}
+
+		defer sock.Close()
 
 		utpcon, err := sock.Accept()
 		if err != nil {
