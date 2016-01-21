@@ -6,9 +6,12 @@ import (
 	"github.com/anacrolix/utp"
 	"io"
 	"os"
+	"os/signal"
+
+	rand "github.com/dustin/randbo"
 )
 
-func beNetcat(con io.ReadWriteCloser) {
+func beNetcat(con io.ReadWriteCloser, in io.Reader) {
 	defer con.Close()
 
 	go func() {
@@ -18,7 +21,7 @@ func beNetcat(con io.ReadWriteCloser) {
 			os.Exit(1)
 		}
 	}()
-	_, err := io.Copy(con, os.Stdin)
+	_, err := io.Copy(con, in)
 	if err != io.EOF {
 		fmt.Fprintf(os.Stderr, "Write error: %s\n", err)
 		os.Exit(1)
@@ -27,12 +30,16 @@ func beNetcat(con io.ReadWriteCloser) {
 
 func main() {
 	list := flag.Bool("l", false, "listen on the given address")
+	spew := flag.Bool("spew", false, "spew random data on the connection")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [-l] <host> <port>\n", os.Args[0])
 	}
 
 	flag.Parse()
+
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt)
 
 	if len(flag.Args()) < 2 {
 		flag.Usage()
@@ -68,5 +75,14 @@ func main() {
 		con = utpcon
 	}
 
-	beNetcat(con)
+	var in io.Reader = os.Stdin
+	if *spew {
+		in = rand.New()
+	}
+
+	go func() {
+		<-c
+		con.Close()
+	}()
+	beNetcat(con, in)
 }
